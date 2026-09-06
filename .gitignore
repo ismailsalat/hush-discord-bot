@@ -13,9 +13,9 @@
 
 # --- Generated runtime data --------------------------------------------------
 # These contain confession content, moderation records and identity mappings.
-logs/
-exports/
-backups/
+/logs/
+/exports/
+/backups/
 !logs/.gitkeep
 !exports/.gitkeep
 !backups/.gitkeep
