@@ -1,0 +1,62 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hush
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: hush
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hush -d hush"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Applies migrations once, then exits. The bot waits for it to succeed.
+  migrate:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://hush:${POSTGRES_PASSWORD}@postgres:5432/hush
+    command: ["python", "-m", "alembic", "upgrade", "head"]
+    restart: "no"
+
+  bot:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DISCORD_TOKEN: ${DISCORD_TOKEN:?set DISCORD_TOKEN in .env}
+      BOT_OWNER_IDS: ${BOT_OWNER_IDS:?set BOT_OWNER_IDS in .env}
+      DATABASE_URL: postgresql+asyncpg://hush:${POSTGRES_PASSWORD}@postgres:5432/hush
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      LOG_JSON: ${LOG_JSON:-true}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # The one-shot migrate service already applied migrations.
+      RUN_MIGRATIONS_ON_START: "false"
+      BRAND_NAME: ${BRAND_NAME:-Hush}
+      BRAND_TAGLINE: ${BRAND_TAGLINE:-}
+      SUPPORT_SERVER_URL: ${SUPPORT_SERVER_URL:-}
+      GITHUB_URL: ${GITHUB_URL:-}
+      PRIVACY_POLICY_URL: ${PRIVACY_POLICY_URL:-}
+      TERMS_URL: ${TERMS_URL:-}
+    volumes:
+      - hush-data:/data
+    healthcheck:
+      test: ["CMD", "python", "scripts/health_check.py"]
+      interval: 60s
+      timeout: 15s
+      start_period: 45s
+      retries: 3
+
+volumes:
+  postgres-data:
+  hush-data:
