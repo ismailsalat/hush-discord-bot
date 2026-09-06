@@ -4,9 +4,9 @@ __pycache__/
 *.pyc
 tests/
 docs/
-backups/
-exports/
-logs/
+/backups/
+/exports/
+/logs/
 *.sqlite3
 .env
 .pytest_cache/
